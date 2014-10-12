@@ -1,0 +1,168 @@
+---
+layout: post
+title:  "Popush 技术报告"
+---
+
+#Popush 技术报告
+Popush 是由 MongoDB + Nginx + Nodejs + Backbone.js 构建的WebApp。
+使用WebSocket在进行通讯。前端是一个单页App。由Nginx提供静态文件访问和WebSocket数据代理。
+
+#配置方法
+
+##1. 准备工作
+
+###a. Ubuntu
+使用apt包管理器安装各个软件包。
+
+{% highlight bash %}
+sudo apt-get install mongodb nginx nodejs
+{% endhighlight %}
+
+###b. MacOS
+
+使用[homebrew](http://brew.sh/)包管理器。
+在终端中执行
+
+{% highlight bash %}
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+{% endhighlight %}
+
+以便安装这个包管理器。
+
+{% highlight bash %}
+sudo brew install mongodb nginx nodejs
+{% endhighlight %}
+
+###c. Windows
+需要去各个官网下载
+
+* MongoDB [官网](http://www.mongodb.org/) [安装包 2.6](https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5-signed.msi?_ga=1.38435232.225739949.1412428248)
+
+* Nginx [官网](http://nginx.org/) [压缩包 1.7.6](http://nginx.org/download/nginx-1.7.6.zip) _请将Nginx解压到与Popush同一个盘符下。_
+
+* Nodejs [官网](http://www.nodejs.org/) [安装包 v0.10.32](http://nodejs.org/dist/v0.10.32/x64/node-v0.10.32-x64.msi)
+
+在命令提示符中输入 `mongod` `node` 看看他们是否在环境变量中。
+
+###d.编译器准备
+Popush需要众多的编译器支持。在安装后请确保所有编译器都在环境变量中。
+
+##2. 启动Nginx服务器
+修改Nginx的配置文件。
+
+Ubuntu的配置文件在 `/etc/nginx/sites-enabled/default`
+
+MacOS 位于 `/usr/local/etc/nginx/nginx.conf`
+
+Win 位于 `解压目录/conf/nginx.conf`
+
+用文本编辑器打开这个文件。主要修改3处。
+
+###a. 修改监听端口。
+默认的80端口可能被占用，或者需要root权限才能打开。
+
+{% highlight text %}
+    server {
+        listen       8080; #修改此处为8080
+        server_name  localhost;
+{% endhighlight %}
+
+###b. 修改网站路径
+指明静态文件存放的文件夹，请特别注意，Windows下依然使用反斜杠。并且不需要指明盘符（比如D:）。
+
+{% highlight text %}
+location / {
+            root   /www/popush/static; #修改此处指向静态文件夹的路径
+            index  index.html index.htm;
+        }
+{% endhighlight %}
+
+###c. 设定WebSocket代理
+指定WebSocket请求由Nodejs处理。
+
+{% highlight text %}
+        location / {
+            root   /www/popush/static;
+            index  index.html index.htm;
+        }
+
+        #添加以下8行
+        location /socket.io/ {
+            proxy_pass http://localhost:4444;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real_IP $remote_addr;
+        }
+
+        #error_page  404              /404.html;
+{% endhighlight %}
+
+###d. 运行Nginx
+Windows 尝试在Nginx的解压目录下 打开命令提示符 执行`nginx.exe`
+
+Linux/MacOS 在终端里执行`nginx`
+
+如果没有错误提示，就显示nginx 已经在后台运行了。
+
+停止nginx `nginx -s stop`
+
+###e. 测试静态文件
+
+浏览 [http://localhost:8080](http://localhost:8080) 应该已经可以看到界面。
+提示无法连接到服务器是由于没有打开Nodejs处理WebSocket的连接。
+
+##3. 启动Mongo数据库
+Ubuntu 请跳过这一步骤
+将 终端/命令提示符 的工作目录切换到Popush下。并在Popush根目录下新建db文件夹以存放数据。
+
+启动MongoDB
+{% highlight bash %}
+mongod --dbpath ./db
+{% endhighlight %}
+
+在Ubuntu上提示
+`ERROR:   addr already in use`
+是由于系统已经有一个数据库启动了不需要执行这个操作。
+这个数据库位于`/data/db`下。
+如果想停止这个服务执行`sudo service mongodb stop`
+
+_请不要关闭这个终端窗口。_
+
+##4. 启动Nodejs
+###a. 安装依赖包
+将 终端/命令提示符 的工作目录切换到Popush下。
+执行`npm install`
+
+###b. 同步库文件
+复制
+`node_modules/socket.io/node_modules/socket.io-client/socket.io.js`
+到
+`static/js/lib/socket.io.js`
+
+在Popush下创建`tmp`与`bin`目录
+在static文件夹下创建`faces`目录。
+
+###c. 尝试启动Nodejs
+打开一个新终端，将 终端/命令提示符 的工作目录切换到Popush下.
+执行`node app.js`
+出现`server start` 说明执行成功。
+
+_请不要关闭这个终端窗口。_
+
+
+##5. Linux下的额外步骤。
+Linux下有一个辅助程序通过ptrace 和 rlimit 来限制用户提交的程序的系统调用和资源占用，位于lib\a.c。
+在Popush下打开终端编译这个文件 `gcc lib\a.c -o bin\a`。
+
+##5. 常见问题
+
+###Windows下Web页面提示`无法连接到服务器`
+
+在Chrome的开发者工具里可以发现有一个请求一直处于padding状态。
+这个请求需要约一分钟才能完成。完成后请不要刷新页面。
+
+###Windows下npm运行出错。
+
+检查X:\Users\YOURNAME\AppData\Roaming\npm 文件夹是否存在，若不存在则创建。
