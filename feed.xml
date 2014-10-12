@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>YZM&#39;s Blog</title>
+    <description>Yuzeming&#39;s Blog</description>
+    <link>http://yuzeming.github.io/</link>
+    <atom:link href="http://yuzeming.github.io/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Mon, 13 Oct 2014 01:29:20 +0800</pubDate>
+    <lastBuildDate>Mon, 13 Oct 2014 01:29:20 +0800</lastBuildDate>
+    <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>Popush 技术报告</title>
+        <description>&lt;h1 id=&quot;popush-&quot;&gt;Popush 技术报告&lt;/h1&gt;
+&lt;p&gt;Popush 是由 MongoDB + Nginx + Nodejs + Backbone.js 构建的WebApp。
+使用WebSocket在进行通讯。前端是一个单页App。由Nginx提供静态文件访问和WebSocket数据代理。&lt;/p&gt;
+
+&lt;h1 id=&quot;section&quot;&gt;配置方法&lt;/h1&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;1. 准备工作&lt;/h2&gt;
+
+&lt;h3 id=&quot;a-ubuntu&quot;&gt;a. Ubuntu&lt;/h3&gt;
+&lt;p&gt;使用apt包管理器安装各个软件包。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;sudo apt-get install mongodb nginx nodejs&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;b-macos&quot;&gt;b. MacOS&lt;/h3&gt;
+
+&lt;p&gt;使用&lt;a href=&quot;http://brew.sh/&quot;&gt;homebrew&lt;/a&gt;包管理器。
+在终端中执行&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;ruby -e &lt;span class=&quot;s2&quot;&gt;&amp;quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;以便安装这个包管理器。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;sudo brew install mongodb nginx nodejs&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;c-windows&quot;&gt;c. Windows&lt;/h3&gt;
+&lt;p&gt;需要去各个官网下载&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;MongoDB &lt;a href=&quot;http://www.mongodb.org/&quot;&gt;官网&lt;/a&gt; &lt;a href=&quot;https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5-signed.msi?_ga=1.38435232.225739949.1412428248&quot;&gt;安装包 2.6&lt;/a&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Nginx &lt;a href=&quot;http://nginx.org/&quot;&gt;官网&lt;/a&gt; &lt;a href=&quot;http://nginx.org/download/nginx-1.7.6.zip&quot;&gt;压缩包 1.7.6&lt;/a&gt; &lt;em&gt;请将Nginx解压到与Popush同一个盘符下。&lt;/em&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Nodejs &lt;a href=&quot;http://www.nodejs.org/&quot;&gt;官网&lt;/a&gt; &lt;a href=&quot;http://nodejs.org/dist/v0.10.32/x64/node-v0.10.32-x64.msi&quot;&gt;安装包 v0.10.32&lt;/a&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在命令提示符中输入 &lt;code&gt;mongod&lt;/code&gt; &lt;code&gt;node&lt;/code&gt; 看看他们是否在环境变量中。&lt;/p&gt;
+
+&lt;h3 id=&quot;d&quot;&gt;d.编译器准备&lt;/h3&gt;
+&lt;p&gt;Popush需要众多的编译器支持。在安装后请确保所有编译器都在环境变量中。&lt;/p&gt;
+
+&lt;h2 id=&quot;nginx&quot;&gt;2. 启动Nginx服务器&lt;/h2&gt;
+&lt;p&gt;修改Nginx的配置文件。&lt;/p&gt;
+
+&lt;p&gt;Ubuntu的配置文件在 &lt;code&gt;/etc/nginx/sites-enabled/default&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;MacOS 位于 &lt;code&gt;/usr/local/etc/nginx/nginx.conf&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Win 位于 &lt;code&gt;解压目录/conf/nginx.conf&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;用文本编辑器打开这个文件。主要修改3处。&lt;/p&gt;
+
+&lt;h3 id=&quot;a-&quot;&gt;a. 修改监听端口。&lt;/h3&gt;
+&lt;p&gt;默认的80端口可能被占用，或者需要root权限才能打开。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;server {
+        listen       8080; #修改此处为8080
+        server_name  localhost;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;b-&quot;&gt;b. 修改网站路径&lt;/h3&gt;
+&lt;p&gt;指明静态文件存放的文件夹，请特别注意，Windows下依然使用反斜杠。并且不需要指明盘符（比如D:）。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;location / {
+            root   /www/popush/static; #修改此处指向静态文件夹的路径
+            index  index.html index.htm;
+        }&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;c-websocket&quot;&gt;c. 设定WebSocket代理&lt;/h3&gt;
+&lt;p&gt;指定WebSocket请求由Nodejs处理。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;location / {
+            root   /www/popush/static;
+            index  index.html index.htm;
+        }
+
+        #添加以下8行
+        location /socket.io/ {
+            proxy_pass http://localhost:4444;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection &amp;quot;upgrade&amp;quot;;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real_IP $remote_addr;
+        }
+
+        #error_page  404              /404.html;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;d-nginx&quot;&gt;d. 运行Nginx&lt;/h3&gt;
+&lt;p&gt;Windows 尝试在Nginx的解压目录下 打开命令提示符 执行&lt;code&gt;nginx.exe&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Linux/MacOS 在终端里执行&lt;code&gt;nginx&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;如果没有错误提示，就显示nginx 已经在后台运行了。&lt;/p&gt;
+
+&lt;p&gt;停止nginx &lt;code&gt;nginx -s stop&lt;/code&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;e-&quot;&gt;e. 测试静态文件&lt;/h3&gt;
+
+&lt;p&gt;浏览 &lt;a href=&quot;http://localhost:8080&quot;&gt;http://localhost:8080&lt;/a&gt; 应该已经可以看到界面。
+提示无法连接到服务器是由于没有打开Nodejs处理WebSocket的连接。&lt;/p&gt;
+
+&lt;h2 id=&quot;mongo&quot;&gt;3. 启动Mongo数据库&lt;/h2&gt;
+&lt;p&gt;Ubuntu 请跳过这一步骤
+将 终端/命令提示符 的工作目录切换到Popush下。并在Popush根目录下新建db文件夹以存放数据。&lt;/p&gt;
+
+&lt;p&gt;启动MongoDB&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;mongod --dbpath ./db&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;在Ubuntu上提示
+&lt;code&gt;ERROR:   addr already in use&lt;/code&gt;
+是由于系统已经有一个数据库启动了不需要执行这个操作。
+这个数据库位于&lt;code&gt;/data/db&lt;/code&gt;下。
+如果想停止这个服务执行&lt;code&gt;sudo service mongodb stop&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;请不要关闭这个终端窗口。&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;nodejs&quot;&gt;4. 启动Nodejs&lt;/h2&gt;
+&lt;p&gt;###a. 安装依赖包
+将 终端/命令提示符 的工作目录切换到Popush下。
+执行&lt;code&gt;npm install&lt;/code&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;b--1&quot;&gt;b. 同步库文件&lt;/h3&gt;
+&lt;p&gt;复制
+&lt;code&gt;node_modules/socket.io/node_modules/socket.io-client/socket.io.js&lt;/code&gt;
+到
+&lt;code&gt;static/js/lib/socket.io.js&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;在Popush下创建&lt;code&gt;tmp&lt;/code&gt;与&lt;code&gt;bin&lt;/code&gt;目录
+在static文件夹下创建&lt;code&gt;faces&lt;/code&gt;目录。&lt;/p&gt;
+
+&lt;h3 id=&quot;c-nodejs&quot;&gt;c. 尝试启动Nodejs&lt;/h3&gt;
+&lt;p&gt;打开一个新终端，将 终端/命令提示符 的工作目录切换到Popush下.
+执行&lt;code&gt;node app.js&lt;/code&gt;
+出现&lt;code&gt;server start&lt;/code&gt; 说明执行成功。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;请不要关闭这个终端窗口。&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;linux&quot;&gt;5. Linux下的额外步骤。&lt;/h2&gt;
+&lt;p&gt;Linux下有一个辅助程序通过ptrace 和 rlimit 来限制用户提交的程序的系统调用和资源占用，位于lib\a.c。
+在Popush下打开终端编译这个文件 &lt;code&gt;gcc lib\a.c -o bin\a&lt;/code&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;section-2&quot;&gt;5. 常见问题&lt;/h2&gt;
+
+&lt;h3 id=&quot;windowsweb&quot;&gt;Windows下Web页面提示&lt;code&gt;无法连接到服务器&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;在Chrome的开发者工具里可以发现有一个请求一直处于padding状态。
+这个请求需要约一分钟才能完成。完成后请不要刷新页面。&lt;/p&gt;
+
+&lt;h3 id=&quot;windowsnpm&quot;&gt;Windows下npm运行出错。&lt;/h3&gt;
+
+&lt;p&gt;检查X:\Users\YOURNAME\AppData\Roaming\npm 文件夹是否存在，若不存在则创建。&lt;/p&gt;
+</description>
+        <pubDate>Sun, 12 Oct 2014 00:00:00 +0800</pubDate>
+        <link>http://yuzeming.github.io/2014/10/12/%E5%9B%A2%E9%98%9F%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A.html</link>
+        <guid isPermaLink="true">http://yuzeming.github.io/2014/10/12/%E5%9B%A2%E9%98%9F%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A.html</guid>
+        
+        
+      </item>
+    
+  </channel>
+</rss>

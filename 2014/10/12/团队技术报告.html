@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>Popush 技术报告</title>
+   <meta name="author" content="Zeming YU" />
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/css/screen.css" type="text/css" media="screen, projection" />
+
+</head>
+<body>
+<div class="site">
+  <div class="title">
+    <a href="/">YZM's Blog</a>
+    <a class="extra" href="/">home</a>
+  </div>
+
+  <div id="post">
+<h1 id="popush-">Popush 技术报告</h1>
+<p>Popush 是由 MongoDB + Nginx + Nodejs + Backbone.js 构建的WebApp。
+使用WebSocket在进行通讯。前端是一个单页App。由Nginx提供静态文件访问和WebSocket数据代理。</p>
+
+<h1 id="section">配置方法</h1>
+
+<h2 id="section-1">1. 准备工作</h2>
+
+<h3 id="a-ubuntu">a. Ubuntu</h3>
+<p>使用apt包管理器安装各个软件包。</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">sudo apt-get install mongodb nginx nodejs</code></pre></div>
+
+<h3 id="b-macos">b. MacOS</h3>
+
+<p>使用<a href="http://brew.sh/">homebrew</a>包管理器。
+在终端中执行</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">ruby -e <span class="s2">&quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)&quot;</span></code></pre></div>
+
+<p>以便安装这个包管理器。</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">sudo brew install mongodb nginx nodejs</code></pre></div>
+
+<h3 id="c-windows">c. Windows</h3>
+<p>需要去各个官网下载</p>
+
+<ul>
+  <li>
+    <p>MongoDB <a href="http://www.mongodb.org/">官网</a> <a href="https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5-signed.msi?_ga=1.38435232.225739949.1412428248">安装包 2.6</a></p>
+  </li>
+  <li>
+    <p>Nginx <a href="http://nginx.org/">官网</a> <a href="http://nginx.org/download/nginx-1.7.6.zip">压缩包 1.7.6</a> <em>请将Nginx解压到与Popush同一个盘符下。</em></p>
+  </li>
+  <li>
+    <p>Nodejs <a href="http://www.nodejs.org/">官网</a> <a href="http://nodejs.org/dist/v0.10.32/x64/node-v0.10.32-x64.msi">安装包 v0.10.32</a></p>
+  </li>
+</ul>
+
+<p>在命令提示符中输入 <code>mongod</code> <code>node</code> 看看他们是否在环境变量中。</p>
+
+<h3 id="d">d.编译器准备</h3>
+<p>Popush需要众多的编译器支持。在安装后请确保所有编译器都在环境变量中。</p>
+
+<h2 id="nginx">2. 启动Nginx服务器</h2>
+<p>修改Nginx的配置文件。</p>
+
+<p>Ubuntu的配置文件在 <code>/etc/nginx/sites-enabled/default</code></p>
+
+<p>MacOS 位于 <code>/usr/local/etc/nginx/nginx.conf</code></p>
+
+<p>Win 位于 <code>解压目录/conf/nginx.conf</code></p>
+
+<p>用文本编辑器打开这个文件。主要修改3处。</p>
+
+<h3 id="a-">a. 修改监听端口。</h3>
+<p>默认的80端口可能被占用，或者需要root权限才能打开。</p>
+
+<div class="highlight"><pre><code class="language-text" data-lang="text">server {
+        listen       8080; #修改此处为8080
+        server_name  localhost;</code></pre></div>
+
+<h3 id="b-">b. 修改网站路径</h3>
+<p>指明静态文件存放的文件夹，请特别注意，Windows下依然使用反斜杠。并且不需要指明盘符（比如D:）。</p>
+
+<div class="highlight"><pre><code class="language-text" data-lang="text">location / {
+            root   /www/popush/static; #修改此处指向静态文件夹的路径
+            index  index.html index.htm;
+        }</code></pre></div>
+
+<h3 id="c-websocket">c. 设定WebSocket代理</h3>
+<p>指定WebSocket请求由Nodejs处理。</p>
+
+<div class="highlight"><pre><code class="language-text" data-lang="text">location / {
+            root   /www/popush/static;
+            index  index.html index.htm;
+        }
+
+        #添加以下8行
+        location /socket.io/ {
+            proxy_pass http://localhost:4444;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection &quot;upgrade&quot;;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real_IP $remote_addr;
+        }
+
+        #error_page  404              /404.html;</code></pre></div>
+
+<h3 id="d-nginx">d. 运行Nginx</h3>
+<p>Windows 尝试在Nginx的解压目录下 打开命令提示符 执行<code>nginx.exe</code></p>
+
+<p>Linux/MacOS 在终端里执行<code>nginx</code></p>
+
+<p>如果没有错误提示，就显示nginx 已经在后台运行了。</p>
+
+<p>停止nginx <code>nginx -s stop</code></p>
+
+<h3 id="e-">e. 测试静态文件</h3>
+
+<p>浏览 <a href="http://localhost:8080">http://localhost:8080</a> 应该已经可以看到界面。
+提示无法连接到服务器是由于没有打开Nodejs处理WebSocket的连接。</p>
+
+<h2 id="mongo">3. 启动Mongo数据库</h2>
+<p>Ubuntu 请跳过这一步骤
+将 终端/命令提示符 的工作目录切换到Popush下。并在Popush根目录下新建db文件夹以存放数据。</p>
+
+<p>启动MongoDB</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">mongod --dbpath ./db</code></pre></div>
+
+<p>在Ubuntu上提示
+<code>ERROR:   addr already in use</code>
+是由于系统已经有一个数据库启动了不需要执行这个操作。
+这个数据库位于<code>/data/db</code>下。
+如果想停止这个服务执行<code>sudo service mongodb stop</code></p>
+
+<p><em>请不要关闭这个终端窗口。</em></p>
+
+<h2 id="nodejs">4. 启动Nodejs</h2>
+<p>###a. 安装依赖包
+将 终端/命令提示符 的工作目录切换到Popush下。
+执行<code>npm install</code></p>
+
+<h3 id="b--1">b. 同步库文件</h3>
+<p>复制
+<code>node_modules/socket.io/node_modules/socket.io-client/socket.io.js</code>
+到
+<code>static/js/lib/socket.io.js</code></p>
+
+<p>在Popush下创建<code>tmp</code>与<code>bin</code>目录
+在static文件夹下创建<code>faces</code>目录。</p>
+
+<h3 id="c-nodejs">c. 尝试启动Nodejs</h3>
+<p>打开一个新终端，将 终端/命令提示符 的工作目录切换到Popush下.
+执行<code>node app.js</code>
+出现<code>server start</code> 说明执行成功。</p>
+
+<p><em>请不要关闭这个终端窗口。</em></p>
+
+<h2 id="linux">5. Linux下的额外步骤。</h2>
+<p>Linux下有一个辅助程序通过ptrace 和 rlimit 来限制用户提交的程序的系统调用和资源占用，位于lib\a.c。
+在Popush下打开终端编译这个文件 <code>gcc lib\a.c -o bin\a</code>。</p>
+
+<h2 id="section-2">5. 常见问题</h2>
+
+<h3 id="windowsweb">Windows下Web页面提示<code>无法连接到服务器</code></h3>
+
+<p>在Chrome的开发者工具里可以发现有一个请求一直处于padding状态。
+这个请求需要约一分钟才能完成。完成后请不要刷新页面。</p>
+
+<h3 id="windowsnpm">Windows下npm运行出错。</h3>
+
+<p>检查X:\Users\YOURNAME\AppData\Roaming\npm 文件夹是否存在，若不存在则创建。</p>
+
+</div>
+
+<div id="related">
+  <h2>Related Posts</h2>
+  <ul class="posts">
+    
+  </ul>
+</div>
+
+  <div class="footer">
+    <div class="contact">
+      <p>
+        Yu Zeming<br />
+        Tsinghua University<br />
+        yuzeming@gmail.com
+      </p>
+    </div>
+    <div class="contact">
+      <p>
+        <a href="http://github.com/yuzeming/">github.com/yuzeming</a><br />
+      </p>
+    </div>
+    <div class="rss">
+      <a href="/feed.xml">
+        <img src="/images/rss.png" alt="Subscribe to RSS Feed" />
+      </a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
